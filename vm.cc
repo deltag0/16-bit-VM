@@ -80,6 +80,8 @@ int main(int argc, char *argv[]) {
 
     // set the PC to starting position 
     enum { PC_START = 0x3000 };
+    enum { STACK_START = 0xFFFF};
+    machine->reg[R_R6] = 
     machine->reg[R_PC] = PC_START;
 
     int running = 1;

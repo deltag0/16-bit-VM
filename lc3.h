@@ -12,7 +12,7 @@ enum {
     R_R3,
     R_R4,
     R_R5,
-    R_R6,
+    R_R6,  // registry 6 is used as a pointer to the "stack" for recursion. The stack starts at the end of the memory, i.e it starts at 0xFFFF
     R_R7,
     R_PC, /* program counter */
     R_COND,
