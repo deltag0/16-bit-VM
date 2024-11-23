@@ -80,11 +80,12 @@ int main(int argc, char *argv[]) {
 
     // set the PC to starting position 
     enum { PC_START = 0x3000 };
-    enum { STACK_START = 0xFFFF};
-    machine->reg[R_R6] = 
+    enum { STACK_START = 0xFD00};
+    machine->reg[R_R6] = STACK_START;
     machine->reg[R_PC] = PC_START;
 
     int running = 1;
+
     if (debug_mode) {
         debugger = static_cast<LC3_Debugger*>(machine);
 

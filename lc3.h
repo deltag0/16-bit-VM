@@ -97,6 +97,10 @@ void swap16(uint16_t &x);
 struct LC3_Machine {
     uint16_t memory[MEMORY_MAX];  /* 65536 locations */
     uint16_t reg[R_COUNT];
+    uint16_t depth;
+    uint16_t counter;
+    
+    
     bool debug = false;
 
     virtual ~LC3_Machine() = default;

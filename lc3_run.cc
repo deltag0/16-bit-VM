@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 #include "lc3.h"
+#include "lc3_run.h"
 
 HANDLE hStdin = INVALID_HANDLE_VALUE;
 DWORD fdwMode, fdwOldMode;
@@ -118,6 +119,12 @@ int run_loop(LC3_Machine *machine, bool debug) {
             if (debug) {
                 std::cout << "Executing operation: JMP\n";
             }
+
+            if (instr.base_r() == 0x7) {
+                uint16_t addr = pop(machine);
+                // set PC to addr
+            }
+
             reg[R_PC] = reg[instr.base_r()];
             break;
         }
@@ -126,6 +133,16 @@ int run_loop(LC3_Machine *machine, bool debug) {
             if (debug) {
                 std::cout << "Executing operation: JSR\n";
             }
+
+            if (machine->depth > 0) {
+                // function called inside of functio, so we save the counter on top of stack
+                push(machine->counter, machine);
+                machine->counter = 0;
+            }
+
+            machine->depth++;
+
+            push(reg[R_PC], machine);
             reg[R_R7] = reg[R_PC];
             if (instr.is_jsr()) {
                 reg[R_PC] += instr.pc_offset11();
@@ -176,6 +193,11 @@ int run_loop(LC3_Machine *machine, bool debug) {
             if (debug) {
                 std::cout << "Executing operation: ST\n";
             }
+
+            if (machine->depth > 0) {
+                push(reg[instr.dr()], machine);
+            }
+
             mem_write(reg[R_PC] + instr.pc_offset9(), reg[instr.dr()], machine);
             break;
         }
@@ -184,6 +206,11 @@ int run_loop(LC3_Machine *machine, bool debug) {
             if (debug) {
                 std::cout << "Executing operation: STI\n";
             }
+
+            if (machine->depth > 0) {
+                push(reg[instr.dr()], machine);
+            }
+
             mem_write(mem_read(reg[R_PC] + instr.pc_offset9(), machine), reg[instr.dr()], machine);
             break;
         }
@@ -192,6 +219,11 @@ int run_loop(LC3_Machine *machine, bool debug) {
             if (debug) {
                 std::cout << "Executing operation: STR\n";
             }
+
+            if (machine->depth > 0) {
+                push(reg[instr.dr()], machine);
+            }
+
             mem_write(reg[instr.base_r()] + instr.offset6(), reg[instr.dr()], machine);
             break;
         }
@@ -283,3 +315,54 @@ int run_loop(LC3_Machine *machine, bool debug) {
     }
     return 1;
 }
+
+
+void push(uint16_t val, LC3_Machine *machine) {
+    mem_write(machine->reg[R_R6], val, machine);
+    machine->counter++;
+    machine->reg[R_R6]--;
+}
+
+uint16_t pop(LC3_Machine *machine) {
+    machine->reg[R_R6]--;
+    uint16_t return_addr = 0x0000;
+
+    while (machine->counter > 0) {
+        if (machine->counter == 1) {
+            return_addr = mem_read(machine->reg[R_R6], machine);
+        }
+        mem_write(machine->reg[R_R6], 0x0000, machine);
+        machine->counter--;
+        machine->reg[R_R6]--;
+    }
+
+    machine->depth--;
+
+    if (machine->depth > 0) {
+        machine->counter = mem_read(machine->reg[R_R6], machine);
+        mem_write(machine->reg[R_R6], 0x0000, machine);
+    }
+
+    return return_addr;
+}
+
+// plan for stack
+/*
+
+stack is stored on the memory from:
+0xFD00 to 0xF800 or 0xF000
+
+have a counter in the LC3 that keeps track of how many functions deep we're in, and once we're back to 0, we know we're in main (standard flow)
+
+Then, if we call a function inside a function, we store our current count to the top of the stack
+When the next function ends, and we need to jump to R7, IF our current count is greater than 0, we retrieve our previous count, and keep going
+
+Need to know that R7 points to the return address of the function
+So once we detect that we jump to R7, we know we need to POP something from the stack
+
+The JSR function is the one that calls our function, and stores the return address in R7
+So, when JSR is called, we PUSH to the stack. 
+We can keep a counter of how many things are pushed during JSR and append that after the function jumps to R7
+
+probably need to make PUSH & POP functions
+*/
